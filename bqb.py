@@ -1,22 +1,38 @@
-import os
-import requests
-from bs4 import BeautifulSoup
+from threading import Thread
+import time
+from queue import Queue
 
-path='images/'
-url='https://fabiaoqing.com/biaoqing/lists/page/{}.html'
-urls=[url.format(i) for i in range(1,200)]
-for page,i in enumerate(urls):
-    response = requests.get(i)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    img_list = soup.find_all('img', class_='ui image lazy')
-    print('开始下载第{}页'.format(page+1))
-    for img in img_list:
-        image = img.get('data-original')
-        title = img.get('title').replace('?', ' ').replace(':', '')
+_url='https://fabiaoqing.com/biaoqing/lists/page/{}.html'
+urlQueue = Queue()
+# 将url放入queue中
+for page in range(1,201):
+    # print(_url.format(page))
+    urlQueue.put(_url.format(page))
+
+def fetchUrl(urlQueue):
+    while True:
         try:
-            with open(path + title + os.path.splitext(image)[-1], 'wb') as f:
-                img = requests.get(image).content
-                f.write(img)
-        except OSError:
-            print(title+'下载异常，源地址：'+image)
+            url = urlQueue.get_nowait()
+            qsize = urlQueue.qsize()
+            print('{}==>{}'.format(url,qsize))
+        except Exception as e:
             break
+            print('Current Thread Name %s, Url: %s ' % (threading.currentThread().name, url))
+        
+        
+
+if __name__ == '__main__':
+    start_time = time.time()
+    threads=[]
+    # 线程数量
+    thread_num = 1
+    for i in range(thread_num):
+        t = Thread(target=fetchUrl,args=(urlQueue,))
+        threads.append(t)
+    for i in threads:
+        i.start()
+    for i in threads:
+        i.join()
+    end_time = time.time()
+    print('done,cost',(end_time-start_time))            
+             
